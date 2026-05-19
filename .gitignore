@@ -1,0 +1,35 @@
+# Dependencies
+  node_modules/
+  .pnpm-store/
+
+  # Build outputs
+  dist/
+  build/
+  .output/
+
+  # Environment
+  .env
+  .env.local
+  .env.*.local
+
+  # Hardhat
+  contracts/cache/
+  contracts/artifacts/
+
+  # Logs
+  *.log
+  npm-debug.log*
+  pnpm-debug.log*
+
+  # OS
+  .DS_Store
+  Thumbs.db
+
+  # Editor
+  .vscode/
+  .idea/
+  *.swp
+
+  # Private keys — NEVER commit these
+  *.pem
+  
