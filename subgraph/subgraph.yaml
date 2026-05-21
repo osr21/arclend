@@ -1,0 +1,48 @@
+specVersion: 0.0.5
+description: ArcLend — DeFi Lending Pool on Arc Testnet. Indexes markets, users, positions, and protocol-wide activity for fast queries.
+repository: https://github.com/your-org/arclend
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  - kind: ethereum/contract
+    name: LendingPool
+    # network slug for The Graph hosted service / Graph Node config
+    network: arc-testnet
+    source:
+      # Must match artifacts/arc-lend/src/lib/deployments.json :: arcTestnet.LendingPool
+      # When redeploying, update BOTH files in the same change.
+      address: "0x4dc7A9BbcB1139cDeDf5274272F541461ef4d20E"
+      abi: LendingPool
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      file: ./src/mapping.ts
+      entities:
+        - Protocol
+        - Market
+        - User
+        - UserPosition
+        - SupplyEvent
+        - WithdrawEvent
+        - BorrowEvent
+        - RepayEvent
+        - LiquidateEvent
+      abis:
+        - name: LendingPool
+          file: ./abis/LendingPool.json
+      eventHandlers:
+        - event: MarketAdded(indexed address,uint256,uint256)
+          handler: handleMarketAdded
+        - event: Supply(indexed address,indexed address,uint256)
+          handler: handleSupply
+        - event: Withdraw(indexed address,indexed address,uint256)
+          handler: handleWithdraw
+        - event: Borrow(indexed address,indexed address,uint256)
+          handler: handleBorrow
+        - event: Repay(indexed address,indexed address,uint256)
+          handler: handleRepay
+        - event: Liquidate(indexed address,indexed address,indexed address,address,uint256,uint256)
+          handler: handleLiquidate
