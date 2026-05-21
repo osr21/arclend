@@ -3,6 +3,70 @@
   All notable changes to ArcLend are documented here.
   Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+  ## [0.3.1] — 2026-05-21
+
+  ### Security — hardening pass
+
+  This is a security-focused patch release. Three findings from an audit pass
+  were fixed in `LendingPool.sol`; all 50 contract tests pass.
+
+  #### Fixed
+  - **[HIGH] Cross-market stale-accrual exploit.** Solvency checks
+    (`_requireWithinLTVAfterBorrow`, `_requireHealthyAfterAction`,
+    `getHealthFactor`) iterate every active market and read each market's
+    stored `liquidityIndex` / `borrowIndex`. Previously, `borrow` /
+    `withdraw` only accrued interest on the *current* market, so debt in
+    untouched markets was undercounted (stale `borrowIndex`). A user could
+    open debt in market A, let interest accrue without poking A, then borrow
+    more from market B against collateral that was actually backing more
+    debt than recorded. `liquidate` had a symmetrical bug: `getHealthFactor`
+    ran against stale indices and could refuse legitimate liquidations of
+    unhealthy accounts, allowing bad debt to grow. **Fix:** new internal
+    `_updateAllMarkets()` accrues every active market before any
+    cross-market solvency check; `liquidate` now accrues *before* the HF
+    check.
+
+  - **[HIGH] Fee-on-transfer / rebasing token accounting.** `supply`,
+    `repay`, and `liquidate` previously credited the user the *requested*
+    amount even when the pool received less (e.g. a transfer-tax token).
+    This could mint unbacked supply credits or over-reduce debt. **Fix:**
+    the pool now measures `balanceOf(this)` pre/post `safeTransferFrom`
+    and uses the actual received delta for accounting. `liquidate` also
+    re-clamps the received amount to the original 50% close-factor cap so
+    a reflection/mint-on-transfer token cannot over-seize collateral.
+
+  - **[MEDIUM] `addMarket` could brick a market via misconfiguration.**
+    Previously only `ltv < liquidationThreshold` was enforced. A
+    `reserveFactor > 10000` could underflow `_getSupplyRate` on every
+    subsequent accrual, freezing the market. **Fix:** `addMarket` now
+    enforces:
+    - non-zero `asset`,
+    - `decimals` in [1, 18],
+    - `liquidationThreshold` ≤ 100%,
+    - `liquidationBonus` in [100%, 125%] (below 100% punishes liquidators,
+      above 125% over-rewards them),
+    - `reserveFactor` ≤ 100%,
+    - `optimalUtilization` in (0, RAY].
+    `setOracle` rejects zero address.
+
+  #### Known accepted risks (documented, not patched)
+  - Owner key is currently a single EOA — `setOracle`, `setProtocolFee`,
+    `setMarketPaused`, `setPaused`, and `withdrawProtocolReserves` are
+    all owner-gated with no timelock. Before mainnet this should move
+    behind a multisig + timelock.
+  - Oracle is currently `MockPriceOracle` with admin-set prices because
+    Chainlink/Pyth do not yet support Arc Testnet. `ChainlinkAdapter.sol`
+    is wired and ready to drop in via `LendingPool.setOracle(adapter)`
+    the moment feeds are available — no protocol redeploy required.
+  - `_updateAllMarkets()` is O(N) over `assetList` for every borrow /
+    withdraw / liquidate. With 3 listed markets this is negligible;
+    governance should keep the listed-market count bounded.
+
+  #### Deployment
+  Patched contracts must be redeployed for the fixes to take effect on
+  Arc Testnet — the existing deployment at
+  `0x4dc7A9BbcB1139cDeDf5274272F541461ef4d20E` is the pre-patch version.
+
   ## [0.3.0] — 2026-05-21
 
   ### Wave 3 — Transaction UX polish & on-chain safety surfacing
