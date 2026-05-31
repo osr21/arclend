@@ -29,6 +29,7 @@
   All contract interaction functions:
   - **Read:** `fetchAllMarkets`, `fetchUserAccountData`, `fetchUserReserves`, `fetchTokenBalance`, `fetchAllowance`
   - **Write:** `approveToken`, `supplyAsset`, `withdrawAsset`, `borrowAsset`, `repayAsset`, `claimFaucet`
+    - **Vaults:** vault read helpers (share price, total assets, user shares) and write helpers (`deposit`, `redeem`/withdraw) for the ERC-4626 vaults
   - **Admin:** `fetchProtocolFeeConfig`, `fetchAllMarketReserves`, `adminSetProtocolFee`, `adminSetFeeCollector`, `adminWithdrawReserves`
 
   ### `src/hooks/useWallet.ts`
@@ -42,6 +43,17 @@
 
   ### `src/hooks/useUserData.ts`
   Fetches user account data and per-asset reserve data when a wallet is connected.
+
+    ### `src/hooks/useVaults.ts`
+    Fetches per-vault data (share price, total assets, the connected user's share
+    balance and underlying value) for the alvUSDC / alvEURC ERC-4626 vaults.
+
+    ### EIP-3009 signing helper
+    Builds and signs the `ReceiveWithAuthorization` typed-data message used by the
+    gasless deposit flow. Resolves the token's EIP-712 domain via ERC-5267 with a
+    Circle-style fallback, so the signature matches what the on-chain token
+    expects. The signed payload is POSTed to the api-server relayer, which submits
+    it on the user's behalf.
 
   ---
 
@@ -58,6 +70,13 @@
 
   ### Faucet (`/faucet`)
   Grid of token cards with a Claim button for each. Calls `MockERC20.faucet()` which mints 1,000 tokens to the caller.
+
+    ### Vaults (`/vaults`)
+    Lists the ERC-4626 vaults (alvUSDC / alvEURC) with share price, your share
+    balance, and underlying value. Deposit and withdraw through the `VaultModal`.
+    The deposit flow has a **gasless toggle**: when on, it signs an EIP-3009
+    authorization off-chain and posts it to the api-server relayer — no wallet gas
+    prompt. Standard approve + deposit and redeem-based withdraw remain available.
 
   ### Admin (`/admin`)
   Owner-only page. The Admin nav link only appears in the header when the connected wallet matches the on-chain `owner()`. Shows protocol fee config, fee collector address, and per-market claimable reserves.

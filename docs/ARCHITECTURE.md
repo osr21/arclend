@@ -2,7 +2,7 @@
 
   ## Overview
 
-  ArcLend is a pure frontend dApp — all protocol data is read directly from the blockchain via ethers.js. There is no backend required for the core protocol.
+  ArcLend's **core protocol** is a pure frontend dApp — all protocol data is read directly from the blockchain via ethers.js, no backend required. Two optional, **additive** layers sit on top: a set of ERC-4626 vaults that make ArcLend yield composable, and a gasless supply flow whose only server-side piece is a thin meta-transaction relayer (the api-server). Neither requires a core redeploy.
 
   ```
   ┌────────────────────────────────────────────────┐
@@ -109,4 +109,36 @@
   | `@workspace/mockup-sandbox` | Vite sandbox for UI component development |
 
   Shared TypeScript config extends `tsconfig.base.json` at the root.
+  
+
+    ---
+
+    ## Composable Integration Layer (optional, additive)
+
+    Two contracts deploy **on top of** the live `LendingPool` — no core redeploy:
+
+    - **`ArcLendVault` (ERC-4626).** A vault per supply market that forwards deposits
+      into the pool and issues transferable `alvUSDC` / `alvEURC` shares. The vault is
+      just another pool depositor under its own address; `totalAssets()` reads its
+      pool position so share value auto-accrues.
+    - **`ArcLendGaslessRouter` (EIP-3009).** Composes a signed
+      `ReceiveWithAuthorization` with a vault deposit so users supply with zero gas.
+
+    ### Gasless supply data flow
+
+    ```
+    Browser (VaultModal, gasless toggle ON)
+      1. Build + sign EIP-3009 ReceiveWithAuthorization   (off-chain, no gas)
+           └─ domain resolved via ERC-5267 (+ Circle-style fallback)
+      2. POST signed authorization → api-server  /gasless/supply
+    api-server (relayer)
+      3. Validate (Zod) + static-call preflight   (bad/expired sigs fail, no gas burned)
+      4. Submit tx with relayer wallet → ArcLendGaslessRouter
+    Arc Testnet
+      5. Router pulls USDC/EURC via EIP-3009 → deposits into ArcLendVault → mints shares to user
+      6. api-server returns { txHash, sharesMinted } → UI shows confirmation
+    ```
+
+    The relayer is the **only** server-side dependency in the whole system, and only
+    for the gasless path — standard approve + deposit still goes wallet-direct.
   

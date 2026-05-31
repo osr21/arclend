@@ -19,6 +19,8 @@
   - **Liquidate** undercollateralised positions (health factor < 1.0)
   - **Claim** free testnet tokens from the built-in faucet
   - **Collect protocol fees** (owner only) via the Admin dashboard
+    - **Earn composable yield** via ERC-4626 vaults (`alvUSDC` / `alvEURC`) whose shares are transferable into any ERC-4626-aware protocol
+    - **Supply gasless** — sign an EIP-3009 authorization off-chain and let a relayer pay the gas (zero-gas deposits)
 
   ---
 
@@ -32,7 +34,15 @@
   | Mock EURC | `0xC38B3acb381E9B8Dd90266022Cca0AB9afc935c5` |
   | Mock mARC | `0x844F39119e5f6CB8b727E538634a05F098cF842B` |
 
-  Block explorer: [testnet.arcscan.app](https://testnet.arcscan.app)
+  ### Integration Layer — deployed *on top of* the live pool (no core redeploy)
+
+    | Contract | Address |
+    |---|---|
+    | ArcLendGaslessRouter | `0xFE338289BA0f113933853759baD76B251932341a` |
+    | alvUSDC vault (ERC-4626) | `0x363C4eE3CfD814D3CC3bc72aCe4259453cF651EB` |
+    | alvEURC vault (ERC-4626) | `0xf9A7CD2c92CB6957ECeFffE2881c5Bd163a2CAeD` |
+
+    Block explorer: [testnet.arcscan.app](https://testnet.arcscan.app)
 
   ---
 
@@ -174,13 +184,15 @@
   │   │   │   ├── components/    # UI components (Header, ActionModal, WalletMenu…)
   │   │   │   ├── hooks/         # useWallet, useMarkets, useUserData
   │   │   │   ├── lib/           # web3.ts, contracts.ts, constants.ts
-  │   │   │   └── pages/         # Dashboard, Markets, Portfolio, Faucet, Admin
+  │   │   │   └── pages/         # Dashboard, Markets, Portfolio, Vaults, Faucet, Admin
   │   └── api-server/            # Express 5 API server (future backend features)
   ├── contracts/
   │   ├── src/
   │   │   ├── LendingPool.sol    # Core protocol
   │   │   ├── MockERC20.sol      # Mintable test token with faucet
-  │   │   └── MockPriceOracle.sol
+  │   │   ├── MockPriceOracle.sol
+    │   │   ├── ArcLendVault.sol   # ERC-4626 vault wrapper (composable shares)
+    │   │   └── ArcLendGaslessRouter.sol  # EIP-3009 gasless supply relayer target
   │   ├── scripts/deploy.js      # Hardhat deployment script
   │   └── hardhat.config.js
   └── lib/                       # Shared TypeScript libraries
@@ -210,6 +222,7 @@
   | Portfolio | `/portfolio` | User positions, health factor, earned interest, wallet balances |
   | Faucet | `/faucet` | One-click testnet token minting for USDC, EURC, mARC |
   | Admin | `/admin` | Owner-only: fee configuration, fee collector address, reserve collection |
+    | Vaults | `/vaults` | ERC-4626 vaults (alvUSDC / alvEURC) — deposit/withdraw, share price, gasless deposit via EIP-3009 |
 
   ---
 

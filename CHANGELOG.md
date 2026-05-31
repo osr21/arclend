@@ -3,7 +3,67 @@
   All notable changes to ArcLend are documented here.
   Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-  ## [0.3.1] — 2026-05-21
+  ## [0.4.0] — 2026-05-31
+
+    ### Wave 4 — Composable integration layer & gasless supply
+
+    A purely **additive** release. Two new contracts deploy *on top of* the
+    already-live `LendingPool` (no core redeploy), the dApp gains a Vaults page
+    and a gasless supply flow, and the api-server takes on its first real job: a
+    meta-transaction relayer.
+
+    #### Added — Smart contracts (composable layer)
+    - **`ArcLendVault.sol` — ERC-4626 wrapper around a single supply market.**
+      Deposits forward into the live `LendingPool`; the vault issues transferable
+      `alvUSDC` / `alvEURC` shares so ArcLend yield becomes composable in any
+      ERC-4626-aware protocol. Previews are fee-aware so the pool's 30 bps fee
+      never silently dilutes share holders. `totalAssets()` reads
+      `getUserReserveData(vault, asset)` so share value auto-accrues with pool
+      interest (subject to the usual poke-to-materialize caveat on reads).
+    - **`ArcLendGaslessRouter.sol` — gasless supply via EIP-3009.** The user signs
+      a `ReceiveWithAuthorization` message off-chain; a relayer submits it, the
+      router pulls USDC/EURC and deposits into an `ArcLendVault`, minting shares to
+      the user. The user pays **zero gas** — ideal on Arc, where USDC *is* the gas
+      token.
+    - Minimal interfaces backing the layer: `interfaces/ILendingPool.sol`,
+      `interfaces/IEIP3009.sol`.
+
+    #### Added — Frontend
+    - **Vaults page (`/vaults`).** Lists the alvUSDC / alvEURC vaults with share
+      price, your share balance, and underlying value. Deposit and withdraw via the
+      new `VaultModal`.
+    - **Gasless deposit toggle.** When enabled, the modal builds and signs an
+      EIP-3009 authorization (ERC-5267 domain resolution with a Circle-style
+      fallback) and submits it to the relayer — no wallet gas prompt. Standard
+      approve + deposit and redeem-based withdraw remain available.
+    - `useVaults` hook, an EIP-3009 signing helper, and vault read/write functions
+      in `lib/contracts.ts`.
+
+    #### Added — Backend (api-server)
+    - **`POST /gasless/supply` relayer endpoint.** Validates the request against the
+      generated Zod schema, runs a static-call preflight (so malformed or expired
+      authorizations fail cleanly without spending gas), then submits the
+      transaction with the relayer wallet and returns the tx hash + minted shares.
+    - **Rate limiting** — 10 requests/min per client (429 on exceed) so the
+      gas-spending endpoint can't be drained.
+    - Hardened input validation: malformed `validAfter` / `validBefore` bounds
+      return a clean 400 (not a 500), plus bytes32 / uint8 shape checks.
+
+    #### Deployed — Arc Testnet integration layer
+    | Contract | Address |
+    |---|---|
+    | ArcLendGaslessRouter | `0xFE338289BA0f113933853759baD76B251932341a` |
+    | alvUSDC vault | `0x363C4eE3CfD814D3CC3bc72aCe4259453cF651EB` |
+    | alvEURC vault | `0xf9A7CD2c92CB6957ECeFffE2881c5Bd163a2CAeD` |
+
+    #### Notes
+    - The relayer currently signs with the configured deployer key; for production,
+      swap in a dedicated low-privilege, minimally-funded relayer wallet.
+    - Building the gasless integration pulls OpenZeppelin's `EIP712` / `ECDSA`
+      utils, which emit the `mcopy` opcode — the Hardhat config's `evmVersion` must
+      be `cancun` (Arc supports it) for those to compile under solc 0.8.24.
+
+    ## [0.3.1] — 2026-05-21
 
   ### Security — hardening pass
 

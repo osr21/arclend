@@ -88,7 +88,44 @@
 
   ---
 
-  ## Verifying the Deployment
+  ## Step 5 — (Optional) Deploy the Composable Integration Layer
+
+    The ERC-4626 vaults and the gasless router deploy **on top of** the already-live
+    `LendingPool` — no core redeploy.
+
+    ```bash
+    cd contracts
+    npx hardhat run scripts/deploy-integrations.js --network arcTestnet
+    ```
+
+    This deploys an `ArcLendVault` per supply market (issuing `alvUSDC` / `alvEURC`
+    shares) and the `ArcLendGaslessRouter`. Copy the printed addresses into the
+    frontend config (or set them as env vars):
+
+    ```bash
+    VITE_GASLESS_ROUTER_ADDRESS=0x...
+    VITE_USDC_VAULT_ADDRESS=0x...
+    VITE_EURC_VAULT_ADDRESS=0x...
+    ```
+
+    ### Relayer (api-server)
+
+    The gasless supply endpoint (`POST /gasless/supply`) submits transactions on the
+    user's behalf, so it needs a funded signer:
+
+    - Set the relayer signing key in the api-server environment (e.g. `PRIVATE_KEY`).
+      For production, use a **dedicated, low-privilege, minimally-funded** relayer
+      wallet — never the protocol owner key.
+    - The endpoint is rate-limited (10 req/min per client) and runs a static-call
+      preflight so malformed or expired authorizations fail without spending gas.
+
+    ```bash
+    pnpm --filter @workspace/api-server run dev
+    ```
+
+    ---
+
+    ## Verifying the Deployment
 
   1. Open the dApp and connect MetaMask with the deployer wallet
   2. Navigate to `/admin` — you should see the green "Verified Owner" badge

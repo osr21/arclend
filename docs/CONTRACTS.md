@@ -107,3 +107,58 @@
   | EURC | $1.09 |
   | mARC | $5.50 |
   
+
+    ---
+
+    ## Composable Integration Layer
+
+    Two contracts deploy **on top of** the already-live `LendingPool` — no core
+    redeploy. They make ArcLend yield composable and enable zero-gas supply.
+
+    ### ArcLendVault.sol — ERC-4626 vault
+
+    A standards-compliant ERC-4626 wrapper around a *single* supply market.
+
+    - **Deposits forward into the live `LendingPool`.** The vault becomes a normal
+      pool depositor under its own address.
+    - **Transferable shares.** Issues `alvUSDC` / `alvEURC` so a position can be
+      moved or used in any ERC-4626-aware protocol.
+    - **Fee-aware previews.** `previewDeposit` / `previewMint` / `previewWithdraw` /
+      `previewRedeem` account for the pool's 30 bps fee so it never silently
+      dilutes share holders.
+    - **Auto-accruing share value.** `totalAssets()` reads
+      `getUserReserveData(vault, asset)`, so share price tracks pool interest
+      (subject to the poke-to-materialize caveat that applies to all reads).
+
+    | Function | Description |
+    |---|---|
+    | `deposit(uint256 assets, address receiver)` | Pull assets, deposit into the pool, mint shares. |
+    | `mint(uint256 shares, address receiver)` | Mint an exact share amount; pulls the required assets. |
+    | `withdraw(uint256 assets, address receiver, address owner)` | Withdraw an exact asset amount, burning shares. |
+    | `redeem(uint256 shares, address receiver, address owner)` | Burn shares, withdraw the corresponding assets. |
+    | `totalAssets()` | Underlying value of the vault's pool position. |
+
+    ### ArcLendGaslessRouter.sol — gasless supply (EIP-3009)
+
+    Lets a user supply **without paying gas** by composing an EIP-3009
+    `ReceiveWithAuthorization` with a vault deposit.
+
+    1. The user signs a `ReceiveWithAuthorization` message off-chain (no gas).
+    2. A relayer submits the signed authorization to the router.
+    3. The router pulls USDC/EURC via EIP-3009 and deposits into an `ArcLendVault`,
+       minting shares to the user.
+
+    The user pays **zero gas** — especially valuable on Arc, where USDC *is* the
+    native gas token. Backed by minimal interfaces `interfaces/ILendingPool.sol`
+    and `interfaces/IEIP3009.sol`.
+
+    > **Build note:** these contracts pull OpenZeppelin's `EIP712` / `ECDSA` utils,
+    > which emit the `mcopy` opcode. The Hardhat `evmVersion` must be `cancun` (Arc
+    > supports it) for them to compile under solc 0.8.24.
+
+    ### ChainlinkAdapter.sol — oracle wrapper (idle)
+
+    Production-ready wrapper for Chainlink `AggregatorV3` feeds with staleness +
+    decimals normalisation. Inactive until Chainlink supports Arc Testnet — wire it
+    in with `LendingPool.setOracle(adapter)` when feeds land, no redeploy required.
+  
