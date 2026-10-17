@@ -16,6 +16,10 @@
   contracts/cache/
   contracts/artifacts/
 
+# Foundry
+cache/
+out/
+
   # Logs
   *.log
   npm-debug.log*
