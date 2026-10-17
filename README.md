@@ -1,5 +1,17 @@
 # ArcLend
 
+> **Testnet prototype in progress.** The new contract implementation in this
+> branch is experimental, unaudited, and must not be deployed to Arc Mainnet or
+> used with real-value assets.
+
+The previous core contract sources and build configuration were not present in
+the repository history or verified for the existing testnet pool. This branch
+starts a fresh implementation rather than claiming to reproduce the old
+contracts.
+
+See [`docs/TESTNET_PROTOTYPE.md`](docs/TESTNET_PROTOTYPE.md) for what is and is
+not implemented and the checks required before any deployment.
+
 > Aave-inspired DeFi lending & borrowing protocol on [Arc Testnet](https://arc.network) — the stablecoin-native EVM L1 by Circle.
 
 ![Arc Testnet](https://img.shields.io/badge/Arc%20Testnet-Chain%205042002-00BFFF?style=flat-square)
